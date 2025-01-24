@@ -30,3 +30,7 @@ group :development do
   # gem "spring"
 end
 
+gem "pry-rails"
+gem "http"
+
+
