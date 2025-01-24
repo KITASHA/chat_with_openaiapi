@@ -1,15 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
   let form = document.getElementById('generation-form');
-<<<<<<< HEAD
   let messagesList = document.getElementById('messages-list');
-=======
->>>>>>> d6095c19b45fc735d0ea2169d170ef5b7d69b989
 
   function handleFormSubmit(e) {
     e.preventDefault();
     const formData = new FormData(form);
     const token = document.querySelector('meta[name="csrf-token"]').content;
-<<<<<<< HEAD
     const promptContent = form.querySelector('textarea').value;
     const targetElement = appendMessageElement(promptContent);
     form.reset();
@@ -35,13 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function sendPrompt(formData, token, targetElement) {
-=======
-    form.reset();
-    sendPrompt(formData, token);
-  }
-
-  function sendPrompt(formData, token) {
->>>>>>> d6095c19b45fc735d0ea2169d170ef5b7d69b989
     fetch(form.action, {
       method: 'POST',
       headers:{
@@ -49,27 +38,18 @@ document.addEventListener('DOMContentLoaded', () => {
         'X-CSRF-Token': token
       },
       body: formData
-<<<<<<< HEAD
     })
   .then(response => response.json())
   .then(data => {
     displayResponse(data.response, targetElement);
   })
   .catch(error => handleAPIError(error, targetElement));
-=======
-    });
->>>>>>> d6095c19b45fc735d0ea2169d170ef5b7d69b989
   }
 
 
 
 
 
-<<<<<<< HEAD
-=======
-
-
->>>>>>> d6095c19b45fc735d0ea2169d170ef5b7d69b989
   // 各要素を取得
   let threadTitle = document.getElementById('thread-title');
   let chatContainer = document.getElementById('chat-container');
