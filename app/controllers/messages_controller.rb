@@ -1,29 +1,45 @@
 require 'http'
 
 class MessagesController < ApplicationController
-  def index
-    @messages = Message.all
-    @message = Message.new
-  end
-
   def create
-    @message = Message.new(message_params)
-    response = openai_api_call(@message.prompt)
+    begin
+      @chat_thread = ChatThread.find(params[:chat_thread_id])
+      @message = @chat_thread.messages.build(message_params)
 
-    if response.status.success?
-      response_body = JSON.parse(response.body)
-      @message.response = response_body['choices'][0]['message']['content']
+      context = @chat_thread.context || ""
+      full_prompt = context + "\n" + @message.prompt
 
-      if @message.save
-        render json: { response: @message.response }
+      response = openai_api_call(full_prompt)
+
+      if response.status.success?
+        response_body = JSON.parse(response.body)
+        @message.response = response_body['choices'][0]['message']['content']
+
+        if @chat_thread.messages.count == 0
+          generated_title = generate_title(@message.prompt)
+          @chat_thread.update(title: generated_title)
+        end
+
+        if @message.save
+          new_context = context + "\n" + @message.prompt + "\n" + @message.response
+          @chat_thread.update(context: new_context.last(1500))
+
+          render json: {
+            response: @message.response,
+            thread_title: @chat_thread.title
+          }
+        else
+          render json: { error: @message.errors.full_messages.join(', ') }, status: :unprocessable_entity
+        end
       else
-        render json: { error: @message.errors.full_messages.join(', ') }, status: :unprocessable_entity
+        render json: { error: 'APIリクエストが失敗しました' }, status: :unprocessable_entity
       end
-    else
-      render json: { error: 'APIリクエストが失敗しました' }, status: :unprocessable_entity
+    rescue ActiveRecord::RecordNotFound
+      render json: { error: "ChatThreadが見つかりません" }, status: :not_found
+    rescue StandardError => e
+      render json: { error: e.message }, status: :internal_server_error
     end
   end
-
 
   private
 
@@ -36,7 +52,6 @@ class MessagesController < ApplicationController
       'https://api.openai.com/v1/chat/completions',
       headers: {
         'Content-Type' => 'application/json',
-        'Accept' => 'application/json',
         'Authorization' => "Bearer #{ENV['OPENAI_API_KEY']}"
       },
       json: {
@@ -46,4 +61,16 @@ class MessagesController < ApplicationController
     )
   end
 
+  def generate_title(content)
+    title_prompt = "以下の会話の開始プロンプトから、この会話スレッドの内容を予測し、5単語以内の簡潔なタイトルを生成してください。タイトルは今後の会話も含めてスレッドの内容を想像できるものにしてください。\n\nプロンプト: #{content}\n\nタイトル:"
+
+    response = openai_api_call(title_prompt)
+    if response.status.success?
+      response_body = JSON.parse(response.body.to_s)
+      generated_title = response_body['choices'][0]['message']['content'].strip
+      return generated_title
+    else
+      return "新しい会話スレッド"
+    end
+  end
 end
